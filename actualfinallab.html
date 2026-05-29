@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Quantum Tuneling</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Share+Tech+Mono&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #c8dce8;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── LEFT: GRAPHS ── */
+  #graphs {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border-right: 2px solid #b8c8d4;
+    overflow: hidden;
+  }
+
+  .graph-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    border-bottom: 1.5px solid #d0dce4;
+    position: relative;
+    min-height: 0;
+  }
+  .graph-panel:last-child { border-bottom: none; }
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+  }
+  canvas.graph-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* x-axis label */
+  #xaxis-label {
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: #5a7080;
+    padding: 4px 0 6px;
+    background: #f4f7fa;
+    border-top: 1px solid #d0dce4;
+    flex-shrink: 0;
+  }
+
+  /* ── RIGHT: CONTROLS + CALCULATIONS ── */
+  #sidebar {
+    width: 300px;
+    background: #e8e8e8;
+    border-left: 2px solid #b8c8d4;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .sb-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid #cccccc;
+  }
+  .sb-title {
+    font-size: 11px; font-weight: 800; color: #5a7080;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;
+  }
+
+  .slider-row { margin-bottom: 13px; }
+  .slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .slider-name { font-size: 13px; font-weight: 700; color: #1a2a3a; }
+  .slider-unit { font-family: 'Share Tech Mono', monospace; font-size: 13px; font-weight: 700; }
+  .su-e { color: #0055bb; } .su-v { color: #cc4400; } .su-w { color: #5500aa; }
+
+  input[type=range] { -webkit-appearance: none; width: 100%; height: 7px; border-radius: 4px; outline: none; cursor: pointer; }
+  input[type=range].tr-e { background: linear-gradient(to right,#99bbdd,#0066cc); }
+  input[type=range].tr-v { background: linear-gradient(to right,#ddaa88,#cc4400); }
+  input[type=range].tr-w { background: linear-gradient(to right,#bbaadd,#6600cc); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:#fff; border:2px solid #8899aa; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+
+  .btn-group { display: flex; gap: 8px; margin-top: 4px; }
+  .btn { flex:1; padding:10px 0; border-radius:20px; font-family:'Nunito',sans-serif; font-size:13px; font-weight:800; cursor:pointer; border:2px solid transparent; transition:transform .08s; }
+  .btn:active { transform:scale(.96); }
+  .btn-p { background:#44aa44; color:#fff; border-color:#228822; }
+  .btn-p:hover { filter:brightness(1.08); }
+  .btn-p.paused { background:#2255aa; border-color:#113388; }
+  .btn-s { background:#cccccc; color:#334455; border-color:#aaaaaa; }
+
+  /* ── CALC CARDS ── */
+  .calc-card {
+    background: #ffffff;
+    border: 1.5px solid #c0ccd4;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .calc-card:last-child { margin-bottom: 0; }
+  .calc-label {
+    font-size: 10px; font-weight: 800; color: #5a7080;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  .calc-formula {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px; color: #334455; line-height: 1.7; margin-bottom: 5px;
+  }
+  .calc-formula .hi { color: #0044aa; font-weight: 700; }
+  .calc-formula .hi2 { color: #cc4400; font-weight: 700; }
+  .calc-formula .hi3 { color: #5500aa; font-weight: 700; }
+  .calc-result {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px; font-weight: 700;
+    padding: 5px 10px;
+    background: #f0f4f8;
+    border-radius: 5px;
+    display: inline-block;
+  }
+  .cr-t { color: #0044aa; }
+  .cr-r { color: #cc4400; }
+  .cr-k { color: #5500aa; }
+  .cr-e { color: #007733; }
+
+  .regime-badge {
+    display: inline-block;
+    font-size: 12px; font-weight: 800;
+    padding: 4px 14px; border-radius: 20px; margin-top: 4px;
+  }
+  .rb-t { background: #cce0ff; color: #0044aa; border: 1.5px solid #88aadd; }
+  .rb-c { background: #ccffdd; color: #005500; border: 1.5px solid #88bb88; }
+
+  /* legend */
+  .legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:#334455; margin-bottom:6px; font-weight:600; }
+  .leg-sw { width:24px; height:3px; border-radius:2px; flex-shrink:0; }
+  .leg-dash { border-top:2px dashed; height:0; background:none; margin-top:1px; }
+</style>
+</head>
+<body>
+
+<!-- ══ LEFT: THREE STACKED GRAPHS ══ -->
+<div id="graphs">
+
+  <!-- Graph 1: Energy diagram -->
+  <div class="graph-panel" id="panel-energy">
+    <div class="canvas-wrap">
+      <canvas id="c-energy" class="graph-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Graph 2: Wave function Re(ψ) -->
+  <div class="graph-panel" id="panel-wave">
+    <div class="canvas-wrap">
+      <canvas id="c-wave" class="graph-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- Graph 3: Probability density |ψ|² -->
+  <div class="graph-panel" id="panel-prob">
+    <div class="canvas-wrap">
+      <canvas id="c-prob" class="graph-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RIGHT: SIDEBAR ══ -->
+<div id="sidebar">
+
+  <div class="sb-section">
+    <div class="sb-title">Parameters</div>
+
+    <div class="slider-row">
+      <div class="slider-header">
+        <span class="slider-name">Particle energy E</span>
+        <span class="slider-unit su-e" id="lbl-ke">0.8 eV</span>
+      </div>
+      <input type="range" id="sl-ke" class="tr-e" min="1" max="25" value="8" step="1">
+    </div>
+
+    <div class="slider-row">
+      <div class="slider-header">
+        <span class="slider-name">Barrier height V₀</span>
+        <span class="slider-unit su-v" id="lbl-v0">1.2 eV</span>
+      </div>
+      <input type="range" id="sl-v0" class="tr-v" min="1" max="30" value="12" step="1">
+    </div>
+
+    <div class="slider-row">
+      <div class="slider-header">
+        <span class="slider-name">Barrier width a</span>
+        <span class="slider-unit su-w" id="lbl-bw">2.4 Å</span>
+      </div>
+      <input type="range" id="sl-bw" class="tr-w" min="1" max="20" value="6" step="1">
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-p" id="btn-play" onclick="togglePlay()">&#9654; Launch</button>
+      <button class="btn btn-s" onclick="resetSim()">&#8635; Reset</button>
+    </div>
+  </div>
+
+    <div class="sb-section" style="border-bottom:none">
+    <div class="sb-title">Legend</div>
+    <div class="legend-item"><div class="leg-sw" style="background:#0044cc"></div>|ψ|² probability density</div>
+    <div class="legend-item"><div class="leg-sw" style="background:#aa44cc"></div>Re(ψ) wave function</div>
+    <div class="legend-item"><div class="leg-sw leg-dash" style="border-color:#cc4400"></div>V(x) potential barrier</div>
+    <div class="legend-item"><div class="leg-sw leg-dash" style="border-color:#007733"></div>E particle energy</div>
+  </div>
+</div>
+
+<script>
+const CE = document.getElementById('c-energy');
+const CW = document.getElementById('c-wave');
+const CP = document.getElementById('c-prob');
+const ctxE = CE.getContext('2d');
+const ctxW = CW.getContext('2d');
+const ctxP = CP.getContext('2d');
+
+const N = 600, L = 50.0, dx = L / N, dt = 0.0008;
+let psi_r, psi_i, Vx;
+let playing = false, raf = null, runFrame = 0;
+
+function resizeAll() {
+  [CE, CW, CP].forEach(c => {
+    c.width  = c.parentElement.clientWidth;
+    c.height = c.parentElement.clientHeight;
+  });
+  if (!playing) drawAll();
+}
+window.addEventListener('resize', resizeAll);
+
+function gp() {
+  const ke = +document.getElementById('sl-ke').value * 0.1;
+  const v0 = +document.getElementById('sl-v0').value * 0.1;
+  const bw = +document.getElementById('sl-bw').value * 0.4;
+  document.getElementById('lbl-ke').textContent = ke.toFixed(1) + ' eV';
+  document.getElementById('lbl-v0').textContent = v0.toFixed(1) + ' eV';
+  document.getElementById('lbl-bw').textContent = bw.toFixed(1) + ' Å';
+  return { ke, v0, bw };
+}
+
+function buildV(v0, bw) {
+  Vx = new Float64Array(N);
+  const cx = L * 0.58, hw = bw / 2;
+  for (let i = 0; i < N; i++) {
+    const x = i * dx;
+    if (x >= cx - hw && x <= cx + hw) Vx[i] = v0;
+  }
+}
+
+function initPsi(ke) {
+  psi_r = new Float64Array(N); psi_i = new Float64Array(N);
+  const x0 = L * 0.3, sig = 3.5;
+  const k0Raw = Math.sqrt(2 * Math.max(ke, 0.01)) * 0.45;
+  const k0 = Math.min(k0Raw, Math.PI / (4 * dx));
+  let nm = 0;
+  for (let i = 0; i < N; i++) {
+    const x = i * dx - x0;
+    const env = Math.exp(-x * x / (2 * sig * sig));
+    psi_r[i] = env * Math.cos(k0 * (i * dx - x0));
+    psi_i[i] = env * Math.sin(k0 * (i * dx - x0));
+    nm += (psi_r[i] ** 2 + psi_i[i] ** 2) * dx;
+  }
+  const n = Math.sqrt(nm);
+  for (let i = 0; i < N; i++) { psi_r[i] /= n; psi_i[i] /= n; }
+}
+
+function stepQM() {
+  const alpha = dt / (4 * dx * dx);
+  const nr = new Float64Array(N), ni = new Float64Array(N);
+  for (let i = 1; i < N - 1; i++) {
+    const vt = Vx[i] * dt / 2;
+    nr[i] = psi_r[i] + alpha * (psi_i[i+1] - 2*psi_i[i] + psi_i[i-1]) - vt * psi_i[i];
+    ni[i] = psi_i[i] - alpha * (psi_r[i+1] - 2*psi_r[i] + psi_r[i-1]) + vt * psi_r[i];
+  }
+  for (let i = 0; i < N; i++) { psi_r[i] = nr[i]; psi_i[i] = ni[i]; }
+  const aw = 50;
+  for (let i = 0; i < aw; i++) {
+    const f = 1 - 0.022 * (1 - i / aw);
+    psi_r[i] *= f; psi_i[i] *= f;
+    psi_r[N-1-i] *= f; psi_i[N-1-i] *= f;
+  }
+  // Safety renormalization — prevents numerical blowup at high energies
+  let norm = 0;
+  for (let i = 0; i < N; i++) norm += (psi_r[i]**2 + psi_i[i]**2) * dx;
+  if (norm > 0.001) {
+    const n = Math.sqrt(norm);
+    for (let i = 0; i < N; i++) { psi_r[i] /= n; psi_i[i] /= n; }
+  }
+}
+
+function probDensity() {
+  const a = new Float64Array(N);
+  for (let i = 0; i < N; i++) a[i] = psi_r[i] ** 2 + psi_i[i] ** 2;
+  return a;
+}
+
+function analytT(v0, ke, bw) {
+  if (ke <= 0) return 0;
+  if (ke >= v0) {
+    const k1 = Math.sqrt(2*ke), k2 = Math.sqrt(2*(ke-v0));
+    if (k2 < 1e-9) return 1;
+    const s = Math.sin(k2 * bw);
+    return 1 / (1 + ((k1*k1 - k2*k2)**2) / (4*k1*k1*k2*k2) * s*s);
+  }
+  const k1 = Math.sqrt(2*ke), kp = Math.sqrt(2*(v0-ke));
+  const sh = Math.sinh(Math.min(kp * bw, 300));
+  return 1 / (1 + ((k1*k1 + kp*kp)**2) / (4*k1*k1*kp*kp) * sh*sh);
+}
+
+// ── helpers ──
+function xToPixel(W, xi) { return (xi / N) * W; }
+
+function drawAxes(ctx, W, H, pad, yMin, yMax, yLabel, xLabel) {
+  const gH = H - pad.t - pad.b;
+  const gW = W - pad.l - pad.r;
+
+  // horizontal grid + y tick marks + y tick labels
+  const ySteps = 5;
+  ctx.font = '10px "Share Tech Mono", monospace';
+  for (let s = 0; s <= ySteps; s++) {
+    const frac = s / ySteps;
+    const py = pad.t + gH * frac;
+    const val = yMax - (yMax - yMin) * frac;
+
+    // grid line
+    ctx.strokeStyle = 'rgba(90,110,128,0.15)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(pad.l, py); ctx.lineTo(W - pad.r, py); ctx.stroke();
+
+    // tick mark
+    ctx.strokeStyle = 'rgba(90,110,128,0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l - 4, py); ctx.lineTo(pad.l, py); ctx.stroke();
+
+    // tick label
+    ctx.fillStyle = '#5a7080';
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(2), pad.l - 7, py + 3.5);
+  }
+
+  // x tick marks + x tick labels
+  const xSteps = 6;
+  for (let s = 0; s <= xSteps; s++) {
+    const frac = s / xSteps;
+    const px = pad.l + gW * frac;
+
+    ctx.strokeStyle = 'rgba(90,110,128,0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(px, H - pad.b); ctx.lineTo(px, H - pad.b + 4); ctx.stroke();
+
+    ctx.fillStyle = '#5a7080';
+    ctx.textAlign = 'center';
+    ctx.font = '10px "Share Tech Mono", monospace';
+    ctx.fillText((frac * L).toFixed(0), px, H - pad.b + 14);
+  }
+
+  // rotated y-axis label
+  if (yLabel) {
+    ctx.save();
+    ctx.translate(14, pad.t + gH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = '#3a5060';
+    ctx.font = 'bold 11px "Share Tech Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(yLabel, 0, 0);
+    ctx.restore();
+  }
+
+  // x-axis label (only on bottom graph, passed as xLabel)
+  if (xLabel) {
+    ctx.fillStyle = '#3a5060';
+    ctx.font = 'bold 11px "Share Tech Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(xLabel, pad.l + gW / 2, H - 2);
+  }
+
+  // axis lines
+  ctx.strokeStyle = 'rgba(60,90,110,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H - pad.b); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad.l, H - pad.b); ctx.lineTo(W - pad.r, H - pad.b); ctx.stroke();
+}
+
+function yToPixel(val, H, pad, yMin, yMax) {
+  return pad.t + (H - pad.t - pad.b) * (1 - (val - yMin) / (yMax - yMin));
+}
+
+// ── GRAPH 1: Energy diagram ──
+function drawEnergy() {
+  const W = CE.width, H = CE.height;
+  const { ke, v0, bw } = gp();
+  ctxE.clearRect(0, 0, W, H);
+  ctxE.fillStyle = '#fafcff';
+  ctxE.fillRect(0, 0, W, H);
+
+  const pad = { t: 14, b: 18, l: 62, r: 12 };
+  const yMax = Math.max(v0 * 1.3, ke * 1.5, 0.3);
+  const yMin = -yMax * 0.3;
+  drawAxes(ctxE, W, H, pad, yMin, yMax, 'Energy (eV)', null);
+
+  const gW = W - pad.l - pad.r;
+  const cx = L * 0.58, hw = bw / 2;
+  const bx1 = pad.l + (cx - hw) / L * gW;
+  const bx2 = pad.l + (cx + hw) / L * gW;
+  const barrierTop = yToPixel(v0, H, pad, yMin, yMax);
+  const zeroY = yToPixel(0, H, pad, yMin, yMax);
+  const energyY = yToPixel(ke, H, pad, yMin, yMax);
+
+  // barrier fill
+  ctxE.fillStyle = 'rgba(200,80,0,0.12)';
+  ctxE.fillRect(bx1, barrierTop, bx2 - bx1, zeroY - barrierTop);
+  // hatching
+  ctxE.save();
+  ctxE.beginPath(); ctxE.rect(bx1, barrierTop, bx2 - bx1, zeroY - barrierTop); ctxE.clip();
+  ctxE.strokeStyle = 'rgba(180,60,0,0.2)'; ctxE.lineWidth = 1;
+  const bH = zeroY - barrierTop;
+  for (let hx = bx1 - bH; hx < bx2 + bH; hx += 10) {
+    ctxE.beginPath(); ctxE.moveTo(hx, barrierTop); ctxE.lineTo(hx + bH, zeroY); ctxE.stroke();
+  }
+  ctxE.restore();
+
+  // barrier outline
+  ctxE.strokeStyle = '#cc4400'; ctxE.lineWidth = 2;
+  ctxE.beginPath();
+  ctxE.moveTo(pad.l, zeroY);
+  ctxE.lineTo(bx1, zeroY); ctxE.lineTo(bx1, barrierTop);
+  ctxE.lineTo(bx2, barrierTop); ctxE.lineTo(bx2, zeroY);
+  ctxE.lineTo(W - pad.r, zeroY);
+  ctxE.stroke();
+
+  // V0 label
+  ctxE.fillStyle = '#bb3300'; ctxE.font = 'bold 11px "Share Tech Mono",monospace'; ctxE.textAlign = 'center';
+  ctxE.fillText('V\u2080 = ' + v0.toFixed(1) + ' eV', (bx1 + bx2) / 2, barrierTop - 5);
+
+  // energy line E
+  ctxE.strokeStyle = '#007733'; ctxE.lineWidth = 2; ctxE.setLineDash([8, 5]);
+  ctxE.beginPath(); ctxE.moveTo(pad.l, energyY); ctxE.lineTo(W - pad.r, energyY); ctxE.stroke();
+  ctxE.setLineDash([]);
+  ctxE.fillStyle = '#005522'; ctxE.textAlign = 'left'; ctxE.font = 'bold 11px "Share Tech Mono",monospace';
+  ctxE.fillText('E = ' + ke.toFixed(1) + ' eV', pad.l + 4, energyY - 5);
+
+  // zero line
+  ctxE.strokeStyle = 'rgba(90,110,128,0.4)'; ctxE.lineWidth = 1; ctxE.setLineDash([4, 3]);
+  ctxE.beginPath(); ctxE.moveTo(pad.l, zeroY); ctxE.lineTo(W - pad.r, zeroY); ctxE.stroke();
+  ctxE.setLineDash([]);
+}
+
+// ── GRAPH 2: Wave function Re(ψ) ──
+function drawWave() {
+  const W = CW.width, H = CW.height;
+  ctxW.clearRect(0, 0, W, H);
+  ctxW.fillStyle = '#fafcff';
+  ctxW.fillRect(0, 0, W, H);
+
+  const { ke, v0, bw } = gp();
+  const pad = { t: 14, b: 18, l: 62, r: 12 };
+  const gW = W - pad.l - pad.r;
+
+  let maxR = 0;
+  if (psi_r) for (let i = 0; i < N; i++) if (Math.abs(psi_r[i]) > maxR) maxR = Math.abs(psi_r[i]);
+  maxR = Math.max(maxR, 0.05);
+  const yMin = -maxR * 1.3, yMax = maxR * 1.3;
+  drawAxes(ctxW, W, H, pad, yMin, yMax, 'Wave Function Re(ψ)', null);
+
+  // zero line
+  const zeroY = yToPixel(0, H, pad, yMin, yMax);
+  ctxW.strokeStyle = 'rgba(90,110,128,0.4)'; ctxW.lineWidth = 1; ctxW.setLineDash([4,3]);
+  ctxW.beginPath(); ctxW.moveTo(pad.l, zeroY); ctxW.lineTo(W - pad.r, zeroY); ctxW.stroke();
+  ctxW.setLineDash([]);
+
+  // barrier region shade
+  const cx = L * 0.58, hw = bw / 2;
+  const bx1 = pad.l + (cx - hw) / L * gW;
+  const bx2 = pad.l + (cx + hw) / L * gW;
+  ctxW.fillStyle = 'rgba(200,80,0,0.07)';
+  ctxW.fillRect(bx1, pad.t, bx2 - bx1, H - pad.t - pad.b);
+  ctxW.strokeStyle = 'rgba(204,68,0,0.3)'; ctxW.lineWidth = 1; ctxW.setLineDash([4,3]);
+  ctxW.beginPath(); ctxW.moveTo(bx1, pad.t); ctxW.lineTo(bx1, H - pad.b); ctxW.stroke();
+  ctxW.beginPath(); ctxW.moveTo(bx2, pad.t); ctxW.lineTo(bx2, H - pad.b); ctxW.stroke();
+  ctxW.setLineDash([]);
+
+  if (psi_r) {
+    ctxW.strokeStyle = '#aa44cc'; ctxW.lineWidth = 2;
+    ctxW.beginPath();
+    for (let i = 1; i < N - 1; i++) {
+      const x = pad.l + (i / N) * gW;
+      const y = yToPixel(psi_r[i], H, pad, yMin, yMax);
+      i === 1 ? ctxW.moveTo(x, y) : ctxW.lineTo(x, y);
+    }
+    ctxW.stroke();
+  }
+}
+
+// ── GRAPH 3: Probability density |ψ|² ──
+function drawProb() {
+  const W = CP.width, H = CP.height;
+  ctxP.clearRect(0, 0, W, H);
+  ctxP.fillStyle = '#fafcff';
+  ctxP.fillRect(0, 0, W, H);
+
+  const { ke, v0, bw } = gp();
+  const pad = { t: 14, b: 28, l: 62, r: 12 };
+  const gW = W - pad.l - pad.r;
+
+  const pd = psi_r ? probDensity() : new Float64Array(N);
+  const maxPD = Math.max(...pd, 0.001);
+  const yMin = 0, yMax = maxPD * 1.3;
+  drawAxes(ctxP, W, H, pad, yMin, yMax, 'Prob. Density |ψ|²', 'Position x (Å)');
+
+  // barrier shade
+  const cx = L * 0.58, hw = bw / 2;
+  const bx1 = pad.l + (cx - hw) / L * gW;
+  const bx2 = pad.l + (cx + hw) / L * gW;
+  ctxP.fillStyle = 'rgba(200,80,0,0.07)';
+  ctxP.fillRect(bx1, pad.t, bx2 - bx1, H - pad.t - pad.b);
+  ctxP.strokeStyle = 'rgba(204,68,0,0.3)'; ctxP.lineWidth = 1; ctxP.setLineDash([4,3]);
+  ctxP.beginPath(); ctxP.moveTo(bx1, pad.t); ctxP.lineTo(bx1, H - pad.b); ctxP.stroke();
+  ctxP.beginPath(); ctxP.moveTo(bx2, pad.t); ctxP.lineTo(bx2, H - pad.b); ctxP.stroke();
+  ctxP.setLineDash([]);
+
+  if (psi_r) {
+    // fill
+    ctxP.fillStyle = 'rgba(0,68,204,0.14)';
+    ctxP.beginPath();
+    ctxP.moveTo(pad.l + (1/N)*gW, H - pad.b);
+    for (let i = 1; i < N - 1; i++) {
+      const x = pad.l + (i / N) * gW;
+      const y = yToPixel(pd[i], H, pad, yMin, yMax);
+      ctxP.lineTo(x, y);
+    }
+    ctxP.lineTo(pad.l + ((N-2)/N)*gW, H - pad.b);
+    ctxP.closePath(); ctxP.fill();
+
+    // line
+    ctxP.strokeStyle = '#0044cc'; ctxP.lineWidth = 2;
+    ctxP.beginPath();
+    for (let i = 1; i < N - 1; i++) {
+      const x = pad.l + (i / N) * gW;
+      const y = yToPixel(pd[i], H, pad, yMin, yMax);
+      i === 1 ? ctxP.moveTo(x, y) : ctxP.lineTo(x, y);
+    }
+    ctxP.stroke();
+  }
+}
+
+function drawAll() {
+  drawEnergy();
+  drawWave();
+  drawProb();
+}
+
+function loop() {
+  for (let s = 0; s < 12; s++) stepQM();
+  runFrame++;
+  drawAll();
+  if (playing) raf = requestAnimationFrame(loop);
+}
+
+function togglePlay() {
+  playing = !playing;
+  const btn = document.getElementById('btn-play');
+  if (playing) { btn.textContent = '\u23f8 Pause'; btn.classList.add('paused'); loop(); }
+  else { btn.textContent = '\u25b6 Launch'; btn.classList.remove('paused'); cancelAnimationFrame(raf); }
+}
+
+function resetSim() {
+  playing = false; cancelAnimationFrame(raf);
+  document.getElementById('btn-play').textContent = '\u25b6 Launch';
+  document.getElementById('btn-play').classList.remove('paused');
+  runFrame = 0;
+  const { ke, v0, bw } = gp();
+  buildV(v0, bw); initPsi(ke); drawAll();
+}
+
+['sl-ke','sl-v0','sl-bw'].forEach(id =>
+  document.getElementById(id).addEventListener('input', resetSim)
+);
+
+
+
+
+
+resizeAll();
+resetSim();
+</script>
+</body>
+</html>
